@@ -28,7 +28,6 @@ export class ProductService {
                       .get<Product[]>(url)
                       .pipe(
                         delay(1500), // pour démo!
-                      //  tap(console.table),
                         shareReplay(),
                         //retry(3),
                         delayedRetry(500, 3),
