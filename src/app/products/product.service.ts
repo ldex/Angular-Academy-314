@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { catchError, delay, shareReplay, tap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError, delay, shareReplay, tap, retry } from 'rxjs/operators';
 import { Product } from './product.interface';
+import { LoadingService } from '../services/loading.service';
+import { delayedRetry } from '../delayedRetry.operator';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +14,9 @@ export class ProductService {
   private baseUrl = 'https://storerestservice.azurewebsites.net/api/products/';
   products$: Observable<Product[]>;
 
-  constructor(private http: HttpClient) { 
+  constructor(
+    private http: HttpClient,
+    private loadingService: LoadingService) {
     this.initProducts();
   }
 
@@ -23,10 +27,19 @@ export class ProductService {
                       .http
                       .get<Product[]>(url)
                       .pipe(
-                        delay(1500),
-                        tap(console.table),
-                        shareReplay()
+                        delay(1500), // pour démo!
+                      //  tap(console.table),
+                        shareReplay(),
+                        //retry(3),
+                        delayedRetry(500, 3),
+                        catchError(error => {
+                          console.log(error);
+                          return throwError(error);
+                        }
+                        )
                       );
+
+    this.loadingService.showLoaderUntilCompleted(this.products$);
   }
 
   insertProduct(newProduct: Product): Observable<Product> {
@@ -34,6 +47,6 @@ export class ProductService {
   }
 
   deleteProduct(id: number): Observable<any> {
-    return this.http.delete(this.baseUrl + id);           
+    return this.http.delete(this.baseUrl + id);
   }
 }
